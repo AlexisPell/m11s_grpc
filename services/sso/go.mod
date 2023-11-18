@@ -1,4 +1,4 @@
-module github.com/AlexisPell/m11s_grpc/services/grpc-auth-service
+module github.com/AlexisPell/m11s_grpc/services/sso
 
 go 1.21.0
 

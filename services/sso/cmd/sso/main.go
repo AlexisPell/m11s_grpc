@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/AlexisPell/m11s_grpc/services/grpc-auth-service/internal/config"
+	"github.com/AlexisPell/m11s_grpc/services/sso/internal/config"
 	"log/slog"
 	"os"
 )
