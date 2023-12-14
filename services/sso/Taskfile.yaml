@@ -7,3 +7,24 @@ tasks:
     desc: "Start local development"
     cmds:
       - go run ./cmd/sso/main.go --config=./config/local.yaml
+
+  migrate_up:
+    aliases:
+      - "migrate:up"
+    desc: "Migrate sqlite database auth"
+    cmds:
+      - go run ./cmd/migrator --storage-path=./storage/sso.db --migrations-path=./migrations
+
+  test_migrate_up:
+    aliases:
+      - "test_migrate:up"
+    desc: "Migrate sqlite database auth for tests"
+    cmds:
+      - go run ./cmd/migrator --storage-path=./storage/sso.db --migrations-path=./tests/migrations --migrations-table=migrations_test
+
+  test_all:
+    aliases:
+      - "test:all"
+    desc: "Test all testcases"
+    cmds:
+      - go test ./tests

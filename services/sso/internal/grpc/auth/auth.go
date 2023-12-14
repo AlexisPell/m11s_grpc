@@ -1,29 +1,27 @@
-package authHandlers
+package auth
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	ssov1 "github.com/AlexisPell/m11s_grpc/protos/gen/go/sso"
+	"github.com/AlexisPell/m11s_grpc/services/sso/internal/services/auth"
+	"github.com/AlexisPell/m11s_grpc/services/sso/internal/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"log/slog"
 )
 
-type AuthService interface {
-	Login(ctx context.Context, email, password string, appId int) (token string, err error)
-	Register(ctx context.Context, email, password string) (userId int, err error)
-	IsAdmin(ctx context.Context, userId int) (isAdmin bool, err error)
-}
-
 type authHandlers struct {
 	log                           *slog.Logger
-	authService                   AuthService
+	authService                   auth.AuthService
 	ssov1.UnimplementedAuthServer // temporarily plug for unimplemented handlers
 }
 
-// Register To register our authService service on grpc server
-func Register(gRPC *grpc.Server, log *slog.Logger, authService AuthService) { // authService AuthService
-	ssov1.RegisterAuthServer(gRPC, &authHandlers{log: log, authService: authService}) // authService: authService,
+// Register To register our auth service on grpc server
+func Register(gRPC *grpc.Server, log *slog.Logger, authService auth.AuthService) {
+	ssov1.RegisterAuthServer(gRPC, &authHandlers{log: log, authService: authService})
 }
 
 func (h *authHandlers) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.LoginResponse, error) {
@@ -33,14 +31,16 @@ func (h *authHandlers) Login(ctx context.Context, req *ssov1.LoginRequest) (*sso
 	}
 
 	// pass to service
-	//token, err := h.authService.Login(ctx, req.GetEmail(), req.GetPassword(), int(req.GetAppId()))
-	//if err != nil {
-	//	// TODO: handle error
-	//	return nil, status.Error(codes.Internal, "Internal error occurred")
-	//}
+	token, err := h.authService.Login(ctx, req.GetEmail(), req.GetPassword(), int(req.GetAppId()))
+	if err != nil {
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			return nil, status.Error(codes.InvalidArgument, "Invalid credentials")
+		}
+		return nil, status.Error(codes.Internal, "Internal error occurred")
+	}
 
 	return &ssov1.LoginResponse{
-		Token: "token",
+		Token: token,
 	}, nil
 }
 
@@ -53,7 +53,11 @@ func (h *authHandlers) Register(ctx context.Context, req *ssov1.RegisterRequest)
 	// pass to service
 	userId, err := h.authService.Register(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
-		// TODO: handle error
+		fmt.Println("WE ARE HERE", err)
+		if errors.Is(err, storage.ErrUserExists) {
+			fmt.Println("WE ARE HERE 2", err)
+			return nil, status.Error(codes.AlreadyExists, "user already exists")
+		}
 		return nil, status.Error(codes.Internal, "Internal error occurred")
 	}
 
@@ -71,7 +75,9 @@ func (h *authHandlers) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (
 	// pass to service
 	isAdmin, err := h.authService.IsAdmin(ctx, int(req.GetUserId()))
 	if err != nil {
-		// TODO: handle error
+		if errors.Is(err, storage.ErrUserNotFound) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
 		return nil, status.Error(codes.Internal, "Internal error occurred")
 	}
 

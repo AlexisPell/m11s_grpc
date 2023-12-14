@@ -2,7 +2,8 @@ package grpc_app
 
 import (
 	"fmt"
-	"github.com/AlexisPell/m11s_grpc/services/sso/internal/grpc/authHandlers"
+	authHandlers "github.com/AlexisPell/m11s_grpc/services/sso/internal/grpc/auth"
+	authService "github.com/AlexisPell/m11s_grpc/services/sso/internal/services/auth"
 	"google.golang.org/grpc"
 	"log/slog"
 	"net"
@@ -14,13 +15,13 @@ type App struct {
 	port       int
 }
 
-func New(log *slog.Logger, port int) *App {
+func New(log *slog.Logger, authService authService.AuthService, port int) *App {
 	gRPCServer := grpc.NewServer()
 
 	// define services for handlers here
-	//authService
+	//auth
 
-	authHandlers.Register(gRPCServer, log)
+	authHandlers.Register(gRPCServer, log, authService)
 
 	return &App{
 		gRPCServer: gRPCServer,

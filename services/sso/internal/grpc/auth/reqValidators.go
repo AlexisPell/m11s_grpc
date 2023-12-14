@@ -1,4 +1,4 @@
-package authHandlers
+package auth
 
 import (
 	ssov1 "github.com/AlexisPell/m11s_grpc/protos/gen/go/sso"

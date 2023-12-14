@@ -1,4 +1,4 @@
-package authService
+package auth
 
 import (
 	"context"
@@ -52,12 +52,13 @@ func New(log *slog.Logger, userProvider UserProvider, appProvider AppProvider, t
 // Login checks if the user exists and credentials are valid
 // if not, returns error
 func (s *authService) Login(ctx context.Context, email string, password string, appId int) (token string, err error) {
-	const op = "authService.Login"
+	const op = "auth.Login"
 
 	log := s.log.With(slog.String("op", op))
 	log.Info("Login attempt", slog.String("email", email))
 
 	user, err := s.userProvider.User(ctx, email)
+	log.Info("User", slog.Any("user", user))
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			log.Warn("User not found" + err.Error())
@@ -74,6 +75,9 @@ func (s *authService) Login(ctx context.Context, email string, password string, 
 	}
 
 	app, err := s.appProvider.App(ctx, appId)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
 
 	token, err = jwt.NewToken(user, app, s.tokenTTL)
 	if err != nil {
@@ -85,8 +89,8 @@ func (s *authService) Login(ctx context.Context, email string, password string, 
 
 // Login checks if the user exists and credentials are valid
 // if not, returns error
-func (s *authService) Register(ctx context.Context, email string, password string) (int64, error) {
-	const op = "authService.Register"
+func (s *authService) Register(ctx context.Context, email string, password string) (int, error) {
+	const op = "auth.Register"
 
 	log := s.log.With(slog.String("op", op))
 
@@ -102,7 +106,8 @@ func (s *authService) Register(ctx context.Context, email string, password strin
 	if err != nil {
 		if errors.Is(err, storage.ErrUserExists) {
 			log.Warn("User already exists", slog.String("error", err.Error()))
-			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
+			//return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
+			return 0, storage.ErrUserExists
 		}
 		log.Error("Failed to save user")
 		return 0, fmt.Errorf("%s: %w", op, err)
@@ -110,18 +115,18 @@ func (s *authService) Register(ctx context.Context, email string, password strin
 
 	log.Info("User registered", slog.Int64("userId", id))
 
-	return id, nil
+	return int(id), nil
 }
 
 // Login checks if the user exists and credentials are valid
 // if not, returns error
-func (s *authService) IsAdmin(ctx context.Context, userId int64) (bool, error) {
-	const op = "authService.IsAdmin"
+func (s *authService) IsAdmin(ctx context.Context, userId int) (isAdmin bool, err error) {
+	const op = "auth.IsAdmin"
 
 	log := s.log.With(slog.String("op", op))
 	log.Info("Check if user is admin")
 
-	isAdmin, err := s.userProvider.IsAdmin(ctx, userId)
+	isAdmin, err = s.userProvider.IsAdmin(ctx, int64(userId))
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			log.Warn("User not found", slog.String("error", err.Error()))
